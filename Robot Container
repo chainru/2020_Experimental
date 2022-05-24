@@ -1,0 +1,51 @@
+
+package frc.robot;
+
+import edu.wpi.first.wpilibj.GenericHID;
+import edu.wpi.first.wpilibj.Joystick;
+import edu.wpi.first.wpilibj.XboxController;
+import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.button.JoystickButton;
+import frc.robot.commands.TeleopDrive;
+import frc.robot.commands.TeleopShootHigh;
+import frc.robot.commands.TeleopShootLow;
+import frc.robot.subsystems.Drivetrain;
+import frc.robot.subsystems.Shooter;
+
+
+
+public class RobotContainer {
+  Joystick m_joystick = new Joystick(0);
+
+  JoystickButton ShootButton = new JoystickButton(m_joystick,2);
+  JoystickButton LowButton= new JoystickButton(m_joystick,1);
+
+  TeleopShootHigh m_TeleopShootHigh = new TeleopShootHigh();
+  TeleopShootLow m_TeleopShootLow = new TeleopShootLow();
+  TeleopDrive m_Drive = new TeleopDrive();
+
+  Shooter m_shooter = new Shooter();
+  Drivetrain m_drivetrain = new Drivetrain();
+  
+
+  public RobotContainer() {
+    configureButtonBindings();
+  }
+  
+  //ShootButton->shoot high port
+  //ShootButton + LowButton->shoot low port
+  private void configureButtonBindings() {
+    ShootButton.whileActiveOnce(m_TeleopShootHigh);
+    ShootButton.and(LowButton).whileActiveOnce(m_TeleopShootLow);
+    
+
+  }
+
+
+
+  public Command getAutonomousCommand() {
+    // An ExampleCommand will run in autonomous
+    return m_autonomousCommand;
+  
+  }
+}
