@@ -1,0 +1,30 @@
+
+package frc.robot;
+
+import com.ctre.phoenix.motorcontrol.NeutralMode;
+import com.ctre.phoenix.motorcontrol.TalonFXInvertType;
+
+
+public final class Constants {
+    public static final double kMaxSpeed=3.0;
+    public static final double kMaxAngularSpeed=Math.PI;
+
+    public static final double kSpeed_FWheelL=0.5;
+    public static final double kSpeed_FWheelH=0.5;
+
+    public static final int kUnitsPerRevolution = 2048;
+    public static final TalonFXInvertType kInvertType = TalonFXInvertType.CounterClockwise;
+    public static final NeutralMode kBrakeDurNeutral = NeutralMode.Coast;
+    
+    public static final int portFL =0;
+    public static final int portFR =0;
+    public static final int portBL =0;
+    public static final int portBR =0;
+
+    public static final int portFWheel=0;
+
+    public static final int kP_FWheelH=0;
+    public static final int kF_FWheelH=0;
+    public static final int kP_FWheelL=0;
+    public static final int kF_FWheelL=0;
+}
