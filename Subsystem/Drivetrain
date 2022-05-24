@@ -1,0 +1,145 @@
+
+package frc.robot.subsystems;
+
+import com.ctre.phoenix.motorcontrol.ControlMode;
+import com.ctre.phoenix.motorcontrol.FeedbackDevice;
+import com.ctre.phoenix.motorcontrol.StatusFrameEnhanced;
+import com.ctre.phoenix.motorcontrol.can.TalonFXConfiguration;
+import com.ctre.phoenix.motorcontrol.can.WPI_TalonFX;
+import com.kauailabs.navx.frc.AHRS;
+
+import edu.wpi.first.math.controller.PIDController;
+import edu.wpi.first.math.controller.SimpleMotorFeedforward;
+import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.math.kinematics.ChassisSpeeds;
+import edu.wpi.first.math.kinematics.MecanumDriveKinematics;
+import edu.wpi.first.math.kinematics.MecanumDriveOdometry;
+import edu.wpi.first.math.kinematics.MecanumDriveWheelSpeeds;
+import edu.wpi.first.wpilibj.SerialPort;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import frc.robot.Constants;
+
+public class Drivetrain extends SubsystemBase {
+
+  private final PIDController m_frontLeftPIDController = new PIDController(1, 0, 0);
+  private final PIDController m_frontRightPIDController = new PIDController(1, 0, 0);
+  private final PIDController m_backLeftPIDController = new PIDController(1, 0, 0);
+  private final PIDController m_backRightPIDController = new PIDController(1, 0, 0);
+  
+  private final WPI_TalonFX m_frontLeftMotor = new WPI_TalonFX(Constants.portFL);
+  private final WPI_TalonFX m_frontRightMotor = new WPI_TalonFX(Constants.portFR);
+  private final WPI_TalonFX m_backLeftMotor = new WPI_TalonFX(Constants.portBL);
+  private final WPI_TalonFX m_backRightMotor = new WPI_TalonFX(Constants.portBR);
+  private final AHRS ahrs = new AHRS(SerialPort.Port.kMXP);
+  
+  //relative postion of four wheels to robot center
+  private final Translation2d m_frontLeftLocation = new Translation2d(0.381, 0.381);
+  private final Translation2d m_frontRightLocation = new Translation2d(0.381, -0.381);
+  private final Translation2d m_backLeftLocation = new Translation2d(-0.381, 0.381);
+  private final Translation2d m_backRightLocation = new Translation2d(-0.381, -0.381);
+  
+  private final MecanumDriveKinematics m_kinematics =
+  new MecanumDriveKinematics(
+      m_frontLeftLocation, m_frontRightLocation, m_backLeftLocation, m_backRightLocation);
+  
+  private final MecanumDriveOdometry m_odometry =
+  new MecanumDriveOdometry(m_kinematics, ahrs.getRotation2d());
+
+  // set feedforward gain(kF)
+  private final SimpleMotorFeedforward m_feedforward = new SimpleMotorFeedforward(1, 3);
+      
+  public Drivetrain() {
+    ahrs.enableLogging(true);
+    ahrs.calibrate();
+    ahrs.reset();
+
+    TalonFXConfiguration configs0 = new TalonFXConfiguration();
+    TalonFXConfiguration configs1 = new TalonFXConfiguration();
+    TalonFXConfiguration configs2 = new TalonFXConfiguration();
+    TalonFXConfiguration configs3 = new TalonFXConfiguration();
+    configs0.primaryPID.selectedFeedbackSensor = FeedbackDevice.IntegratedSensor;
+    configs1.primaryPID.selectedFeedbackSensor = FeedbackDevice.IntegratedSensor;
+    configs2.primaryPID.selectedFeedbackSensor = FeedbackDevice.IntegratedSensor;
+    configs3.primaryPID.selectedFeedbackSensor = FeedbackDevice.IntegratedSensor;
+    m_frontLeftMotor.configAllSettings(configs0);
+    m_frontRightMotor.configAllSettings(configs1);
+    m_backLeftMotor.configAllSettings(configs2);
+    m_backRightMotor.configAllSettings(configs3);
+    
+    m_frontLeftMotor.setStatusFramePeriod(StatusFrameEnhanced.Status_2_Feedback0, 20);
+    m_frontRightMotor.setStatusFramePeriod(StatusFrameEnhanced.Status_2_Feedback0, 20);
+    m_backLeftMotor.setStatusFramePeriod(StatusFrameEnhanced.Status_2_Feedback0, 20);
+    m_backRightMotor.setStatusFramePeriod(StatusFrameEnhanced.Status_2_Feedback0, 20);
+
+    m_frontLeftMotor.setInverted(Constants.kInvertType);
+    m_frontRightMotor.setInverted(Constants.kInvertType);
+    m_backLeftMotor.setInverted(Constants.kInvertType);
+    m_backRightMotor.setInverted(Constants.kInvertType);
+
+    m_frontLeftMotor.setSensorPhase(false);
+    m_frontRightMotor.setSensorPhase(false);
+    m_backLeftMotor.setSensorPhase(false);
+    m_backRightMotor.setSensorPhase(false);
+    
+    m_frontLeftMotor.setNeutralMode(Constants.kBrakeDurNeutral);
+    m_frontRightMotor.setNeutralMode(Constants.kBrakeDurNeutral);
+    m_backLeftMotor.setNeutralMode(Constants.kBrakeDurNeutral);
+    m_backRightMotor.setNeutralMode(Constants.kBrakeDurNeutral);
+  }
+  public MecanumDriveWheelSpeeds getCurrentState(){
+    return new MecanumDriveWheelSpeeds(
+      //parameter:PIDidx:0
+      m_frontLeftMotor.getSelectedSensorVelocity(0),
+      m_frontRightMotor.getSelectedSensorVelocity(0),
+      m_backLeftMotor.getSelectedSensorVelocity(0),
+      m_backRightMotor.getSelectedSensorVelocity(0));
+  }
+
+  //function : feed speeds to talonFX
+  public void setSpeeds(MecanumDriveWheelSpeeds speeds){
+
+    //feedforward control output
+    final double frontLeftFeedforward = m_feedforward.calculate(speeds.frontLeftMetersPerSecond);
+    final double frontRightFeedforward = m_feedforward.calculate(speeds.frontLeftMetersPerSecond);
+    final double backLeftFeedforward = m_feedforward.calculate(speeds.frontLeftMetersPerSecond);
+    final double backRightFeedforward = m_feedforward.calculate(speeds.frontLeftMetersPerSecond);
+
+    //PID controller output
+    //calculate(measurement, setpoint)
+    final double frontLeftOutput =
+        m_frontLeftPIDController.calculate(
+          m_frontLeftMotor.getSelectedSensorVelocity(0)/2048*10*0.3, speeds.frontLeftMetersPerSecond);
+    final double frontRightOutput =
+        m_frontRightPIDController.calculate(
+          m_frontRightMotor.getSelectedSensorVelocity(0)/2048*10*0.3, speeds.frontRightMetersPerSecond);
+    final double backLeftOutput =
+        m_backLeftPIDController.calculate(
+          m_backLeftMotor.getSelectedSensorVelocity(0)/2048*10*0.3, speeds.rearLeftMetersPerSecond);
+    final double backRightOutput =
+        m_backRightPIDController.calculate(
+          m_backRightMotor.getSelectedSensorVelocity(0)/2048*10*0.3, speeds.rearRightMetersPerSecond);
+    
+    m_frontLeftMotor.set(ControlMode.PercentOutput,(frontLeftOutput + frontLeftFeedforward)/75);
+    m_frontRightMotor.set(ControlMode.PercentOutput,(frontRightOutput + frontRightFeedforward)/75);
+    m_backLeftMotor.set(ControlMode.PercentOutput,(backLeftOutput + backLeftFeedforward)/75);
+    m_backRightMotor.set(ControlMode.PercentOutput,(backRightOutput + backRightFeedforward)/75);
+  }
+
+  //driving function : transform chassis speed (driver control robot center speed) to field-oriented, individual wheel speed
+  public void drive(double xSpeed, double ySpeed, double rot){
+    var mecanumDriveWheelSpeeds = m_kinematics.toWheelSpeeds(ChassisSpeeds.fromFieldRelativeSpeeds(xSpeed, ySpeed, rot, ahrs.getRotation2d()));
+    //speed limitation
+    mecanumDriveWheelSpeeds.desaturate(Constants.kMaxSpeed);
+    setSpeeds(mecanumDriveWheelSpeeds);
+  }
+
+  
+  public void updateOdometry(){
+    m_odometry.update(ahrs.getRotation2d(), getCurrentState());
+  }
+  public void showPos(){
+    SmartDashboard.putString("Odemetry Pos", "(" + m_odometry.getPoseMeters().getX() + ", " + m_odometry.getPoseMeters().getY() + ")");
+    SmartDashboard.putNumber("Odemetry Rotation", m_odometry.getPoseMeters().getRotation().getDegrees());
+  }
+}
